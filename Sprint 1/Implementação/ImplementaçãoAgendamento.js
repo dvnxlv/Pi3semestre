@@ -1,23 +1,66 @@
-let scheduledAppointments = [];
+import { firebaseFirestore } from '../firebaseConfig';
 
-function scheduleAppointment(appointment) {
-  const existingAppointment = scheduledAppointments.find(appt => appt.date === appointment.date && appt.time === appointment.time);
-  if (existingAppointment) {
-    return false; 
+class Queue {
+  constructor() {
+    this.items = [];
   }
 
-  scheduledAppointments.push(appointment);
-  return true; 
-}
-
-function cancelAppointment(username, date, time) {
-  const index = scheduledAppointments.findIndex(appt => appt.user === username && appt.date === date && appt.time === time);
-  if (index === -1) {
-    return false; 
+  enqueue(element) {
+    this.items.push(element);
   }
 
-  scheduledAppointments.splice(index, 1);
-  return true; 
+  dequeue() {
+    if (this.isEmpty()) {
+      return "Queue is empty";
+    }
+    return this.items.shift();
+  }
+
+  front() {
+    if (this.isEmpty()) {
+      return "Queue is empty";
+    }
+    return this.items[0];
+  }
+
+  isEmpty() {
+    return this.items.length === 0;
+  }
+
+  printQueue() {
+    return this.items.join(", ");
+  }
 }
 
-module.exports = { scheduleAppointment, cancelAppointment };
+const agendamentoQueue = new Queue();
+
+const inserirAgendamento = async (agendamento) => {
+  try {
+    agendamentoQueue.enqueue(agendamento);
+    console.log('Agendamento adicionado à fila:', agendamento);
+    
+    const currentAgendamento = agendamentoQueue.dequeue();
+    
+    await firebaseFirestore.collection('usuarios').doc(currentAgendamento.userId).collection('agendamentos').add({
+      nomeEspecialista: currentAgendamento.nomeEspecialista,
+      especialidade: currentAgendamento.especialidade,
+      data: currentAgendamento.data,
+      horario: currentAgendamento.horario,
+      razao: currentAgendamento.razao,
+      retorno: currentAgendamento.retorno,
+      status: '', 
+    });
+
+    console.log('Agendamento adicionado com sucesso:', currentAgendamento);
+  } catch (error) {
+    console.error('Erro ao adicionar agendamento:', error);
+    throw error;
+  }
+};
+
+const printAgendamentoQueue = () => {
+  console.log('Fila de agendamentos:');
+  console.log(agendamentoQueue.printQueue());
+};
+
+export { inserirAgendamento, printAgendamentoQueue };
